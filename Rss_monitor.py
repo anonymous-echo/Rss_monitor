@@ -108,7 +108,7 @@ def init_database():
     return conn
 
 # 获取数据并检查更新
-def check_for_updates(feed_url, site_name, cursor, conn):
+def check_for_updates(feed_url, site_name, cursor, conn, send_push=True):
     print(f"{site_name} 监控中... ")
     data_list = []
     file_data = feedparser.parse(feed_url)
@@ -123,9 +123,12 @@ def check_for_updates(feed_url, site_name, cursor, conn):
         cursor.execute("SELECT * FROM items WHERE link = ?", (data_link,))
         result = cursor.fetchone()
         if result is None:
-            # 未找到相同链接的文章，进行推送
+            # 未找到相同链接的文章
             push_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-            push_message(f"{site_name}今日更新", f"标题: {data_title}\n链接: `{data_link}`\n推送时间：{push_time}")
+            
+            # 只有在send_push为True时才发送推送
+            if send_push:
+                push_message(f"{site_name}今日更新", f"标题: {data_title}\n链接: `{data_link}`\n推送时间：{push_time}")
 
             # 存储到数据库 with a timestamp
             cursor.execute("INSERT INTO items (title, link, timestamp) VALUES (?, ?, CURRENT_TIMESTAMP)", (data_title, data_link))
@@ -226,8 +229,9 @@ def pushplus(text, msg, token):
 def generate_daily_report(cursor):
     print("开始生成日报...")
     
-    # 获取当前日期
+    # 获取当前日期和时间
     current_date = time.strftime('%Y-%m-%d', time.localtime())
+    current_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
     
     # 创建目录结构
     archive_dir = f'archive/{current_date}'
@@ -239,7 +243,8 @@ def generate_daily_report(cursor):
     
     # 生成markdown内容
     markdown_content = f"# RSS日报 {current_date}\n\n"
-    markdown_content += f"共收集到 {len(articles)} 篇文章\n\n"
+    markdown_content += f"共收集到 {len(articles)} 篇文章\n"
+    markdown_content += f"最后更新时间：{current_time}\n\n"
     
     # 准备文章数据，用于HTML模板
     article_list = []
@@ -257,10 +262,14 @@ def generate_daily_report(cursor):
     
     # 写入markdown文件
     markdown_file = f'{archive_dir}/Daily_{current_date}.md'
+    is_update = os.path.exists(markdown_file)
     with open(markdown_file, 'w', encoding='utf-8') as f:
         f.write(markdown_content)
     
-    print(f"Markdown日报已生成：{markdown_file}")
+    if is_update:
+        print(f"Markdown日报已更新：{markdown_file}")
+    else:
+        print(f"Markdown日报已生成：{markdown_file}")
     
     # 生成HTML内容
     try:
@@ -273,6 +282,7 @@ def generate_daily_report(cursor):
         html_content = template.render(
             date=current_date,
             count=len(articles),
+            update_time=current_time,
             articles=article_list
         )
         
@@ -281,7 +291,10 @@ def generate_daily_report(cursor):
         with open(html_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
         
-        print(f"HTML日报已生成：{html_file}")
+        if is_update:
+            print(f"HTML日报已更新：{html_file}")
+        else:
+            print(f"HTML日报已生成：{html_file}")
         
         # 更新index.html
         update_index_html(current_date, article_list, len(articles))
@@ -468,12 +481,30 @@ def main():
 
     # 发送启动通知消息 - 非日报模式才发送
     if not args.daily_report:
-        push_message("安全社区文章监控已启动!", f"启动时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
+        # 检查是否有任何推送服务的开关是开启的
+        config = load_config()
+        push_config = config.get('push', {})
+        any_push_enabled = False
+        
+        for service in push_config.values():
+            if service.get('switch', 'OFF') == 'ON':
+                any_push_enabled = True
+                break
+        
+        if any_push_enabled:
+            push_message("安全社区文章监控已启动!", f"启动时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
 
     try:
         if args.daily_report:
-            # 日报模式，只生成日报不推送
+            # 日报模式，先收集数据，再生成日报
             print("使用日报模式")
+            # 先收集所有RSS源的数据
+            for website, config in rss_config.items():
+                website_name = config.get("website_name")
+                rss_url = config.get("rss_url")
+                # 日报模式下不发送推送，send_push=False
+                check_for_updates(rss_url, website_name, cursor, conn, send_push=False)
+            # 收集完数据后生成日报
             generate_daily_report(cursor)
         elif args.once:
             # 单次执行模式，适合GitHub Action

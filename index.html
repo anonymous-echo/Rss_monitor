@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSS日报 {{ date }}</title>
+    <title>RSS日报</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -26,26 +27,27 @@
             margin: 0;
             font-size: 2.5rem;
         }
-        .article-count {
-            font-size: 1.2rem;
-            margin-top: 10px;
+        .report-list {
+            list-style: none;
+            padding: 0;
         }
-        .article {
+        .report-item {
             background-color: white;
             padding: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .article-title {
+        .report-link {
             color: #4285f4;
             text-decoration: none;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
+            font-weight: bold;
         }
-        .article-title:hover {
+        .report-link:hover {
             text-decoration: underline;
         }
-        .article-time {
+        .report-info {
             color: #666;
             font-size: 0.9rem;
             margin-top: 5px;
@@ -60,18 +62,20 @@
 </head>
 <body>
     <header>
-        <h1>RSS日报 {{ date }}</h1>
-        <div class="article-count">共收集到 {{ count }} 篇文章</div>
-        <div class="update-time">最后更新时间：{{ update_time }}</div>
+        <h1>RSS日报</h1>
+        <div>每日安全社区文章汇总</div>
     </header>
     
     <main>
-        {% for article in articles %}
-        <div class="article">
-            <h2><a href="{{ article.link }}" class="article-title">{{ article.title }}</a></h2>
-            <div class="article-time">发布时间：{{ article.timestamp }}</div>
-        </div>
-        {% endfor %}
+        <h2>日报列表</h2>
+        <ul class="report-list">
+            
+            <li class="report-item">
+                <a href="archive/2025-12-16/Daily_2025-12-16.html" class="report-link">2025-12-16</a>
+                <div class="report-info">共 22 篇文章</div>
+            </li>
+            
+        </ul>
     </main>
     
     <footer>
@@ -79,3 +83,4 @@
     </footer>
 </body>
 </html>
+    
