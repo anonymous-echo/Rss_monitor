@@ -1,108 +1,101 @@
 import os
+import sys
 import yaml
+import json
 import requests
-import re
+from github import Github
 
-# 获取环境变量
-github_token = os.environ.get('GITHUB_TOKEN')
-issue_number = os.environ.get('ISSUE_NUMBER')
-repository = os.environ.get('GITHUB_REPOSITORY')
+# 从环境变量获取GitHub Token
+token = os.environ.get('GITHUB_TOKEN')
+if not token:
+    print("未找到GITHUB_TOKEN环境变量")
+    sys.exit(1)
 
-if not all([github_token, issue_number, repository]):
-    print("缺少必要的环境变量")
-    exit(1)
+# 初始化GitHub客户端
+g = Github(token)
 
-# GitHub API 基础URL
-base_url = f"https://api.github.com/repos/{repository}"
-headers = {
-    "Authorization": f"token {github_token}",
-    "Accept": "application/vnd.github.v3+json"
-}
+# 获取Issue信息
+issue_json = os.environ.get('GITHUB_EVENT_PATH')
+if not issue_json:
+    print("未找到GITHUB_EVENT_PATH环境变量")
+    sys.exit(1)
 
-# 1. 获取Issue内容
-issue_url = f"{base_url}/issues/{issue_number}"
-response = requests.get(issue_url, headers=headers)
-if response.status_code != 200:
-    print(f"获取Issue内容失败: {response.status_code}")
-    exit(1)
+with open(issue_json, 'r') as f:
+    issue_data = json.load(f)
 
-issue_data = response.json()
-issue_title = issue_data['title']
-issue_body = issue_data['body']
+# 获取Issue基本信息
+repo_name = issue_data['repository']['full_name']
+issue_number = issue_data['issue']['number']
+issue_title = issue_data['issue']['title']
+issue_body = issue_data['issue']['body']
+issue_state = issue_data['issue']['state']
 
-# 2. 解析Issue内容，提取网站名称和RSS URL
-# 支持两种格式：
-# 格式1：网站名称: 示例网站
-# RSS URL: https://example.com/feed.xml
-# 格式2：直接在标题或正文中包含网站名称和URL
+# 只有当Issue是打开状态且标题包含"添加RSS源"时才处理
+if issue_state != 'open' or '添加RSS源' not in issue_title:
+    print(f"Issue #{issue_number} 不是打开状态或标题不包含'添加RSS源'，跳过处理")
+    sys.exit(0)
 
-website_name = ""
-rss_url = ""
-
-# 尝试解析格式1
-website_match = re.search(r'网站名称:\s*(.+)', issue_body, re.IGNORECASE)
-rss_match = re.search(r'RSS URL:\s*(.+)', issue_body, re.IGNORECASE)
-
-if website_match and rss_match:
-    website_name = website_match.group(1).strip()
-    rss_url = rss_match.group(1).strip()
-else:
-    # 尝试解析格式2，从正文中提取URL
-    url_match = re.search(r'(https?://[^\s]+)', issue_body)
-    if url_match:
-        rss_url = url_match.group(1).strip()
-        # 使用Issue标题作为网站名称
-        website_name = issue_title.strip()
-
-if not website_name or not rss_url:
-    # 如果解析失败，回复并关闭Issue
-    comment_url = f"{base_url}/issues/{issue_number}/comments"
-    comment_body = "抱歉，无法从您的Issue中提取有效的网站名称和RSS URL。请按照以下格式提交：\n\n网站名称: 示例网站\nRSS URL: https://example.com/feed.xml"
-    requests.post(comment_url, json={"body": comment_body}, headers=headers)
+# 解析Issue内容
+try:
+    lines = issue_body.strip().split('\n')
+    website_name = None
+    rss_url = None
     
-    # 关闭Issue
-    update_url = f"{base_url}/issues/{issue_number}"
-    requests.patch(update_url, json={"state": "closed"}, headers=headers)
+    for line in lines:
+        if line.startswith('网站名称：'):
+            website_name = line.split('：')[1].strip()
+        elif line.startswith('RSS链接：'):
+            rss_url = line.split('：')[1].strip()
     
-    print("解析Issue内容失败")
-    exit(1)
+    if not website_name or not rss_url:
+        raise ValueError("Issue内容格式不正确，缺少网站名称或RSS链接")
+    
+    print(f"解析到的网站名称：{website_name}")
+    print(f"解析到的RSS链接：{rss_url}")
+    
+except Exception as e:
+    print(f"解析Issue内容失败：{str(e)}")
+    # 回复Issue
+    repo = g.get_repo(repo_name)
+    issue = repo.get_issue(number=issue_number)
+    issue.create_comment(f"解析Issue内容失败：{str(e)}\n请按照正确格式提交：\n网站名称：XXX\nRSS链接：XXX")
+    sys.exit(1)
 
-# 3. 读取现有的rss.yaml文件
+# 读取现有的rss.yaml文件
 try:
     with open('rss.yaml', 'r', encoding='utf-8') as f:
         rss_config = yaml.safe_load(f) or {}
+    
 except Exception as e:
-    print(f"读取rss.yaml失败: {str(e)}")
-    exit(1)
+    print(f"读取rss.yaml文件失败：{str(e)}")
+    sys.exit(1)
 
-# 4. 添加新的RSS源
+# 添加新的RSS源
 rss_config[website_name] = {
-    "rss_url": rss_url,
-    "website_name": website_name
+    'rss_url': rss_url,
+    'website_name': website_name
 }
 
-# 5. 保存更新后的rss.yaml文件
+# 保存更新后的rss.yaml文件
 try:
     with open('rss.yaml', 'w', encoding='utf-8') as f:
-        yaml.dump(rss_config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+        yaml.dump(rss_config, f, allow_unicode=True, default_flow_style=False)
+    print(f"成功将新RSS源添加到rss.yaml")
+    
 except Exception as e:
-    print(f"保存rss.yaml失败: {str(e)}")
-    exit(1)
+    print(f"保存rss.yaml文件失败：{str(e)}")
+    sys.exit(1)
 
-# 6. 回复Issue，告知用户操作结果
-comment_url = f"{base_url}/issues/{issue_number}/comments"
-comment_body = f"✅ 已成功添加RSS源！\n\n网站名称: {website_name}\nRSS URL: {rss_url}\n\n该RSS源将从下一次监控开始生效。"
-response = requests.post(comment_url, json={"body": comment_body}, headers=headers)
-if response.status_code != 201:
-    print(f"回复Issue失败: {response.status_code}")
-    exit(1)
+# 回复并关闭Issue
+try:
+    repo = g.get_repo(repo_name)
+    issue = repo.get_issue(number=issue_number)
+    issue.create_comment(f"成功添加RSS源：\n网站名称：{website_name}\nRSS链接：{rss_url}")
+    issue.edit(state='closed')
+    print(f"成功回复并关闭Issue #{issue_number}")
+    
+except Exception as e:
+    print(f"回复或关闭Issue失败：{str(e)}")
+    sys.exit(1)
 
-# 7. 关闭Issue
-update_url = f"{base_url}/issues/{issue_number}"
-response = requests.patch(update_url, json={"state": "closed"}, headers=headers)
-if response.status_code != 200:
-    print(f"关闭Issue失败: {response.status_code}")
-    exit(1)
-
-print(f"成功添加RSS源: {website_name} - {rss_url}")
-print("成功回复并关闭Issue")
+print("处理完成！")

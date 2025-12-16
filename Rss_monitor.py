@@ -7,6 +7,7 @@ import os
 import argparse
 from datetime import datetime
 import dingtalkchatbot.chatbot as cb
+from jinja2 import Template
 
 # 加载配置文件
 def load_config():
@@ -63,6 +64,11 @@ def load_config():
     # 添加夜间休眠配置
     config['night_sleep'] = {
         'switch': os.environ.get('NIGHT_SLEEP_SWITCH', config.get('night_sleep', {}).get('switch', 'ON'))
+    }
+    
+    # 添加生成日报配置
+    config['daily_report'] = {
+        'switch': os.environ.get('DAILY_REPORT_SWITCH', config.get('daily_report', {}).get('switch', 'ON'))
     }
     
     config['push'] = push_config
@@ -215,16 +221,217 @@ def pushplus(text, msg, token):
         pass
 
 
+# 生成日报
+
+def generate_daily_report(cursor):
+    print("开始生成日报...")
+    
+    # 获取当前日期
+    current_date = time.strftime('%Y-%m-%d', time.localtime())
+    
+    # 创建目录结构
+    archive_dir = f'archive/{current_date}'
+    os.makedirs(archive_dir, exist_ok=True)
+    
+    # 从数据库中获取当天的所有文章
+    cursor.execute("SELECT title, link, timestamp FROM items WHERE date(timestamp) = date('now') ORDER BY timestamp DESC")
+    articles = cursor.fetchall()
+    
+    # 生成markdown内容
+    markdown_content = f"# RSS日报 {current_date}\n\n"
+    markdown_content += f"共收集到 {len(articles)} 篇文章\n\n"
+    
+    # 准备文章数据，用于HTML模板
+    article_list = []
+    for article in articles:
+        title, link, timestamp = article
+        markdown_content += f"## [{title}]({link})\n"
+        markdown_content += f"发布时间：{timestamp}\n\n"
+        
+        # 添加到文章列表
+        article_list.append({
+            'title': title,
+            'link': link,
+            'timestamp': timestamp
+        })
+    
+    # 写入markdown文件
+    markdown_file = f'{archive_dir}/Daily_{current_date}.md'
+    with open(markdown_file, 'w', encoding='utf-8') as f:
+        f.write(markdown_content)
+    
+    print(f"Markdown日报已生成：{markdown_file}")
+    
+    # 生成HTML内容
+    try:
+        # 读取HTML模板
+        with open('template.html', 'r', encoding='utf-8') as f:
+            template_content = f.read()
+        
+        # 渲染HTML模板
+        template = Template(template_content)
+        html_content = template.render(
+            date=current_date,
+            count=len(articles),
+            articles=article_list
+        )
+        
+        # 写入HTML文件
+        html_file = f'{archive_dir}/Daily_{current_date}.html'
+        with open(html_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        print(f"HTML日报已生成：{html_file}")
+        
+        # 更新index.html
+        update_index_html(current_date, article_list, len(articles))
+        
+    except Exception as e:
+        print(f"生成HTML日报失败：{str(e)}")
+    
+    return markdown_file, markdown_content
+
+# 更新index.html
+def update_index_html(current_date, article_list, count):
+    print("更新index.html...")
+    
+    # 创建index.html模板
+    index_template = """
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS日报</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        header {
+            background-color: #4285f4;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .report-list {
+            list-style: none;
+            padding: 0;
+        }
+        .report-item {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .report-link {
+            color: #4285f4;
+            text-decoration: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .report-link:hover {
+            text-decoration: underline;
+        }
+        .report-info {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>RSS日报</h1>
+        <div>每日安全社区文章汇总</div>
+    </header>
+    
+    <main>
+        <h2>日报列表</h2>
+        <ul class="report-list">
+            {% for report in reports %}
+            <li class="report-item">
+                <a href="{{ report.path }}" class="report-link">{{ report.date }}</a>
+                <div class="report-info">共 {{ report.count }} 篇文章</div>
+            </li>
+            {% endfor %}
+        </ul>
+    </main>
+    
+    <footer>
+        <p>Generated by RSS Monitor</p>
+    </footer>
+</body>
+</html>
+    """
+    
+    # 获取所有已生成的日报
+    reports = []
+    
+    # 遍历archive目录下的所有日期目录
+    if os.path.exists('archive'):
+        for date_dir in sorted(os.listdir('archive'), reverse=True):
+            if os.path.isdir(os.path.join('archive', date_dir)):
+                # 检查该日期目录下是否存在HTML文件
+                html_file = f'archive/{date_dir}/Daily_{date_dir}.html'
+                if os.path.exists(html_file):
+                    # 尝试获取文章数量
+                    count = 0
+                    md_file = f'archive/{date_dir}/Daily_{date_dir}.md'
+                    if os.path.exists(md_file):
+                        with open(md_file, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            # 从markdown文件中提取文章数量
+                            import re
+                            match = re.search(r'共收集到 (\d+) 篇文章', content)
+                            if match:
+                                count = match.group(1)
+                    
+                    reports.append({
+                        'date': date_dir,
+                        'path': html_file,
+                        'count': count
+                    })
+    
+    # 渲染index.html
+    template = Template(index_template)
+    html_content = template.render(reports=reports)
+    
+    # 写入index.html文件
+    with open('index.html', 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    print("index.html已更新")
+
 # Telegram Bot推送
 def tgbot(text, msg, token, group_id):
     import telegram
     try:
-        bot = telegram.Bot(token='{}'.format(token))  # Your Telegram Bot Token
-        bot.send_message(chat_id=group_id, text='{}\r\n{}'.format(text, msg))
+        bot = telegram.Bot(token=token)
+        bot.send_message(chat_id=group_id, text=f'{text}\n{msg}')
     except Exception as e:
         pass
 
 # 主函数
+
 def main():
     banner = '''
     +-------------------------------------------+
@@ -244,6 +451,7 @@ def main():
     # 解析命令行参数
     parser = argparse.ArgumentParser(description='安全社区文章监控脚本')
     parser.add_argument('--once', action='store_true', help='只执行一次，适合GitHub Action运行')
+    parser.add_argument('--daily-report', action='store_true', help='生成日报模式，只生成日报不推送')
     args = parser.parse_args()
     
     conn = init_database()
@@ -258,17 +466,27 @@ def main():
         conn.close()
         return
 
-    # 发送启动通知消息
-    push_message("安全社区文章监控已启动!", f"启动时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
+    # 发送启动通知消息 - 非日报模式才发送
+    if not args.daily_report:
+        push_message("安全社区文章监控已启动!", f"启动时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
 
     try:
-        if args.once:
+        if args.daily_report:
+            # 日报模式，只生成日报不推送
+            print("使用日报模式")
+            generate_daily_report(cursor)
+        elif args.once:
             # 单次执行模式，适合GitHub Action
             print("使用单次执行模式")
             for website, config in rss_config.items():
                 website_name = config.get("website_name")
                 rss_url = config.get("rss_url")
                 check_for_updates(rss_url, website_name, cursor, conn)
+            
+            # 检查是否需要生成日报
+            config = load_config()
+            if config.get('daily_report', {}).get('switch', 'ON') == 'ON':
+                generate_daily_report(cursor)
         else:
             # 循环执行模式，适合本地运行
             while True:

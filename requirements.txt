@@ -4,3 +4,5 @@ pyyaml
 lxml
 feedparser
 python-telegram-bot
+PyGithub
+Jinja2
