@@ -23,7 +23,7 @@ push:
 
 # 代理配置
 proxy:
-  enable: "ON"  # 设置为 "ON" 启用代理
+  enable: "OFF"  # 设置为 "ON" 启用代理
   http_proxy: "http://127.0.0.1:7890"  # HTTP代理地址
   https_proxy: "https://127.0.0.1:7890"  # HTTPS代理地址
   no_proxy: "localhost,127.0.0.1"  # 不使用代理的地址列表
