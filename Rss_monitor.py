@@ -254,17 +254,32 @@ def send_discard_msg(webhook, title, content, is_daily_report=False, html_file=N
             github_pages_url = f"https://adminlove520.github.io/Rss_monitor/{html_file}"
             
             # 构建推送内容
-            push_content = f"**RSS日报 {title}**\n共收集到 {content.split()[1]} 篇文章\n日报文件：{html_file}\n地址: `{github_pages_url}`\n\n"
+            push_content = f"**RSS日报 {title}**\n共收集到 {content.split()[1]} 篇文章\n日报文件：{html_file}\n地址: [{github_pages_url}]({github_pages_url})\n\n"
             
-            # 添加markdown内容
+            # 添加markdown内容（预览格式）
             if markdown_content:
-                push_content += "**日报的markdown内容：**\n```markdown\n"
-                push_content += markdown_content
-                push_content += "\n```\n\n"
+                # 移除markdown标题和最后更新时间，只保留文章列表
+                lines = markdown_content.split('\n')
+                preview_content = []
+                include_lines = False
+                for line in lines:
+                    # 从第一个## 开始记录文章列表
+                    if line.startswith('## '):
+                        include_lines = True
+                    # 跳过Power By信息
+                    if line.strip().startswith('Power By'):
+                        break
+                    if include_lines:
+                        preview_content.append(line)
+                
+                # 拼接预览内容
+                push_content += "**日报内容预览：**\n"
+                push_content += '\n'.join(preview_content)
+                push_content += "\n\n"
             
-            # 添加Power By信息
+            # 添加Power By信息（正确格式）
             push_content += "---\n"
-            push_content += "**Power By 东方隐侠安全团队·Anonymous@** [隐侠安全客栈](https://www.dfyxsec.com/)\n"
+            push_content += f"Power By 东方隐侠安全团队·Anonymous@ [隐侠安全客栈](https://www.dfyxsec.com/)\n"
             push_content += "---"
             
             data = {
@@ -353,8 +368,10 @@ def generate_daily_report(cursor):
             'timestamp': timestamp
         })
     
-    # 添加Power By信息（居中显示）
-    markdown_content += f"\n<center>Power By 东方隐侠安全团队·Anonymous@ [隐侠安全客栈](https://www.dfyxsec.com/)</center>\n"
+    # 添加Power By信息（纯markdown格式，避免HTML标签在Discord中显示为文本）
+    markdown_content += f"\n---\n"
+    markdown_content += f"Power By 东方隐侠安全团队·Anonymous@ [隐侠安全客栈](https://www.dfyxsec.com/)\n"
+    markdown_content += f"---\n"
     
     # 写入markdown文件
     markdown_file = f'{archive_dir}/Daily_{current_date}.md'
