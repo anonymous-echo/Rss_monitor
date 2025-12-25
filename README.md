@@ -5,7 +5,7 @@
 ## 功能特点
 
 - 支持多个RSS源监控
-- 多种推送渠道：钉钉、飞书、Server酱、PushPlus、Telegram Bot
+- 多种推送渠道：钉钉、飞书、Telegram Bot、Discard
 - 支持夜间休眠（北京时间0-7点），避免打扰
 - 支持通过GitHub Action定时运行
 - 支持通过提交Issue添加新的RSS源
@@ -41,19 +41,17 @@ push:
     webhook: "飞书的webhook地址"
     app_name: "飞书"
     switch: "OFF"
-  server_chan:
-    sckey: "Server酱的sckey"
-    app_name: "Server酱"
-    switch: "OFF"
-  pushplus:
-    token: "token地址"
-    app_name: "PushPlus"
-    switch: "OFF"
   tg_bot:
     token: "Telegram Bot的token"
     group_id: "Telegram Bot的group_id"
     app_name: "Telegram Bot"
     switch: "OFF"
+  discard:
+    webhook: "discard的webhook地址"
+    app_name: "Discard"
+    switch: "OFF"  # 总开关
+    send_daily_report: "OFF"  # 推送日报开关
+    send_normal_msg: "ON"  # 推送普通消息开关
 
 # 夜间休眠配置
 night_sleep:
@@ -79,13 +77,13 @@ night_sleep:
 | DINGDING_SWITCH | 钉钉推送开关（ON/OFF） |
 | FEISHU_WEBHOOK | 飞书机器人Webhook |
 | FEISHU_SWITCH | 飞书推送开关（ON/OFF） |
-| SERVER_SCKEY | Server酱SCKEY |
-| SERVER_CHAN_SWITCH | Server酱推送开关（ON/OFF） |
-| PUSHPLUS_TOKEN | PushPlus Token |
-| PUSHPLUS_SWITCH | PushPlus推送开关（ON/OFF） |
 | TELEGRAM_TOKEN | Telegram Bot Token |
 | TELEGRAM_GROUP_ID | Telegram群组ID |
 | TELEGRAM_SWITCH | Telegram推送开关（ON/OFF） |
+| DISCARD_WEBHOOK | Discard Webhook |
+| DISCARD_SWITCH | Discard总推送开关（ON/OFF） |
+| DISCARD_SEND_DAILY_REPORT | Discard推送日报开关（ON/OFF） |
+| DISCARD_SEND_NORMAL_MSG | Discard推送普通消息开关（ON/OFF） |
 | NIGHT_SLEEP_SWITCH | 夜间休眠开关（ON/OFF） |
 
 ## 使用
@@ -230,17 +228,25 @@ Rss_monitor/
 ## 更新日志
 
 - 2023.10.10：初始版本
-- 2024.01.01：
+- 2025.10.11：
   - 增加夜间休眠功能
   - 支持通过Issue添加RSS源
   - 完善配置文件支持
   - 优化推送逻辑
-- 2024.01.02：
+- 2025.10.15：
   - 调整GitHub Action执行时间为北京时间9:00-23:00
   - 优化工作流运行时长为59分钟
   - 移除--once参数，默认使用循环模式
   - 完善README文档
   - 添加Issue模板
+- 2025.12.25：
+  - 移除Server酱和PushPlus推送方式
+  - 新增Discard推送渠道
+  - 支持Discard推送日报功能
+  - 支持Discard单独开关控制日报和普通消息推送
+  - 更新GitHub Action工作流配置
+  - 修复代码缩进问题
+  - 完善README文档
 
 ## 许可证
 
@@ -303,20 +309,18 @@ RSS URL: https://example.com/feed.xml
 - 支持飞书机器人API
 - 发送文本消息
 
-### 3. Server酱
-
-- 支持微信推送
-- 简单易用
-
-### 4. PushPlus
-
-- 支持多种推送方式
-- 需注册获取Token
-
-### 5. Telegram Bot
+### 3. Telegram Bot
 
 - 支持Telegram群组推送
 - 需创建Bot获取Token
+
+### 4. Discard
+
+- 支持两种推送方式：
+  - 普通消息推送（与钉钉格式相同）
+  - 日报推送（HTML格式）
+- 支持单独开关控制日报和普通消息推送
+- 需配置Webhook地址
 
 ## 日志
 
@@ -330,12 +334,3 @@ MIT License
 ## 贡献
 
 欢迎提交Issue和Pull Request！
-
-## 更新日志
-
-- 2025.12.09：初始版本
-- 2025.12.09：
-  - 增加夜间休眠功能
-  - 支持通过Issue添加RSS源
-  - 完善配置文件支持
-  - 优化推送逻辑

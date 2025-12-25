@@ -39,20 +39,6 @@ def load_config():
     push_config['feishu']['webhook'] = os.environ.get('FEISHU_WEBHOOK', push_config['feishu'].get('webhook', ''))
     push_config['feishu']['switch'] = os.environ.get('FEISHU_SWITCH', push_config['feishu'].get('switch', 'OFF'))
     
-    # Server酱推送配置 - 环境变量优先级高于配置文件
-    if 'server_chan' not in push_config:
-        push_config['server_chan'] = {}
-    
-    push_config['server_chan']['sckey'] = os.environ.get('SERVER_SCKEY', push_config['server_chan'].get('sckey', ''))
-    push_config['server_chan']['switch'] = os.environ.get('SERVER_CHAN_SWITCH', push_config['server_chan'].get('switch', 'OFF'))
-    
-    # PushPlus推送配置 - 环境变量优先级高于配置文件
-    if 'pushplus' not in push_config:
-        push_config['pushplus'] = {}
-    
-    push_config['pushplus']['token'] = os.environ.get('PUSHPLUS_TOKEN', push_config['pushplus'].get('token', ''))
-    push_config['pushplus']['switch'] = os.environ.get('PUSHPLUS_SWITCH', push_config['pushplus'].get('switch', 'OFF'))
-    
     # Telegram Bot推送配置 - 环境变量优先级高于配置文件
     if 'tg_bot' not in push_config:
         push_config['tg_bot'] = {}
@@ -60,6 +46,15 @@ def load_config():
     push_config['tg_bot']['token'] = os.environ.get('TELEGRAM_TOKEN', push_config['tg_bot'].get('token', ''))
     push_config['tg_bot']['group_id'] = os.environ.get('TELEGRAM_GROUP_ID', push_config['tg_bot'].get('group_id', ''))
     push_config['tg_bot']['switch'] = os.environ.get('TELEGRAM_SWITCH', push_config['tg_bot'].get('switch', 'OFF'))
+    
+    # Discard推送配置 - 环境变量优先级高于配置文件
+    if 'discard' not in push_config:
+        push_config['discard'] = {}
+    
+    push_config['discard']['webhook'] = os.environ.get('DISCARD_WEBHOOK', push_config['discard'].get('webhook', ''))
+    push_config['discard']['switch'] = os.environ.get('DISCARD_SWITCH', push_config['discard'].get('switch', 'OFF'))
+    push_config['discard']['send_daily_report'] = os.environ.get('DISCARD_SEND_DAILY_REPORT', push_config['discard'].get('send_daily_report', 'OFF'))
+    push_config['discard']['send_normal_msg'] = os.environ.get('DISCARD_SEND_NORMAL_MSG', push_config['discard'].get('send_normal_msg', 'ON'))
     
     # 添加夜间休眠配置
     config['night_sleep'] = {
@@ -149,29 +144,17 @@ def push_message(title, content):
     if 'feishu' in push_config and push_config['feishu'].get('switch', '') == "ON":
         send_feishu_msg(push_config['feishu'].get('webhook'), title, content)
 
-    # Server酱推送
-    if 'server_chan' in push_config and push_config['server_chan'].get('switch', '') == "ON":
-        send_server_chan_msg(push_config['server_chan'].get('sckey'), title, content)
-
-    # PushPlus推送
-    if 'pushplus' in push_config and push_config['pushplus'].get('switch', '') == "ON":
-        send_pushplus_msg(push_config['pushplus'].get('token'), title, content)
-
     # Telegram Bot推送
     if 'tg_bot' in push_config and push_config['tg_bot'].get('switch', '') == "ON":
         send_tg_bot_msg(push_config['tg_bot'].get('token'), push_config['tg_bot'].get('group_id'), title, content)
+    
+    # Discard推送
+    if 'discard' in push_config and push_config['discard'].get('switch', '') == "ON" and push_config['discard'].get('send_normal_msg', '') == "ON":
+        send_discard_msg(push_config['discard'].get('webhook'), title, content)
 
 # 飞书推送
 def send_feishu_msg(webhook, title, content):
     feishu(title, content, webhook)
-
-# Server酱推送
-def send_server_chan_msg(sckey, title, content):
-    server(title, content, sckey)
-
-# PushPlus推送
-def send_pushplus_msg(token, title, content):
-    pushplus(title, content, token)
 
 # Telegram Bot推送
 def send_tg_bot_msg(token, group_id, title, content):
@@ -206,23 +189,38 @@ def feishu(text, msg, webhook):
 def send_dingding_msg(webhook, secret_key, title, content):
     dingding(title, content, webhook, secret_key)
 
-# Server酱推送
-def server(text, msg, sckey):
+# Discard推送
+def send_discard_msg(webhook, title, content, is_daily_report=False, html_file=None):
     try:
-        uri = 'https://sc.ftqq.com/{}.send?text={}&desp={}'.format(sckey, text, msg)  # 将 xxxx 换成自己的server SCKEY
-        requests.get(uri, timeout=10)
+        headers = {
+            "Content-Type": "application/json;charset=utf-8"
+        }
+        
+        if is_daily_report and html_file:
+            # 推送日报，读取HTML文件内容
+            with open(html_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            
+            data = {
+                "msg_type": "html",
+                "content": {
+                    "html": html_content
+                }
+            }
+        else:
+            # 推送普通消息，与钉钉格式相同
+            data = {
+                "msg_type": "text",
+                "content": {
+                    "text": '{}\n{}'.format(title, content)
+                }
+            }
+        
+        response = requests.post(webhook, json=data, headers=headers, timeout=10)
+        response.raise_for_status()
+        print(f"Discard推送成功: {title}")
     except Exception as e:
-        pass
-
-
-# PushPlus推送
-def pushplus(text, msg, token):
-    try:
-        uri = 'https://www.pushplus.plus/send?token={}&title={}&content={}'.format(token, text, msg)  # 将 xxxx 换成自己的pushplus的 token
-        requests.get(uri, timeout=10)
-    except Exception as e:
-        pass
-
+        print(f"Discard推送失败: {str(e)}")
 
 # 生成日报
 
@@ -298,6 +296,18 @@ def generate_daily_report(cursor):
         
         # 更新index.html
         update_index_html(current_date, article_list, len(articles))
+        
+        # Discard推送日报
+        config = load_config()
+        push_config = config.get('push', {})
+        if 'discard' in push_config and push_config['discard'].get('switch', '') == "ON" and push_config['discard'].get('send_daily_report', '') == "ON":
+            send_discard_msg(
+                push_config['discard'].get('webhook'),
+                f"RSS日报 {current_date}",
+                f"共收集到 {len(articles)} 篇文章",
+                is_daily_report=True,
+                html_file=html_file
+            )
         
     except Exception as e:
         print(f"生成HTML日报失败：{str(e)}")

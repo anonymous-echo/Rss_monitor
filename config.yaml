@@ -4,24 +4,22 @@ push:
     webhook: "https://oapi.dingtalk.com/robot/send?access_token=你的token"
     secret_key: "你的Key"
     app_name: "钉钉"
-    switch: "ON"  # 设置开关为 "ON" 进行推送，设置为其他值则不进行推送
+    switch: "OFF"  # 设置开关为 "ON" 进行推送，设置为其他值则不进行推送
   feishu:
     webhook: "飞书的webhook地址"
     app_name: "飞书"
-    switch: "OFF"
-  server_chan:
-    sckey: "Server酱的sckey"
-    app_name: "Server酱"
-    switch: "OFF"
-  pushplus:
-    token: "token地址"
-    app_name: "PushPlus"
     switch: "OFF"
   tg_bot:
     token: "Telegram Bot的token"
     group_id: "Telegram Bot的group_id"
     app_name: "Telegram Bot"
     switch: "OFF"
+  discard:
+    webhook: "https://discord.com/api/webhooks/1453660933464522927/x0cZIuIVtRsgmTClJY3WzvOg3WmdYzgLpHElWbjDZXitU98qS4_A0ymZuIBi646qPbNU"
+    app_name: "Discard"
+    switch: "ON"  # 总开关
+    send_daily_report: "ON"  # 推送日报开关
+    send_normal_msg: "ON"  # 推送每日消息开关
 
 # 夜间休眠配置
 night_sleep:

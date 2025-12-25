@@ -62,12 +62,12 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
           TELEGRAM_SWITCH: ${{ github.event.inputs.push_switch || secrets.PUSH_SWITCH || 'ON' }}
-          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
-          PUSHPLUS_SWITCH: ${{ github.event.inputs.push_switch || secrets.PUSH_SWITCH || 'ON' }}
-          SERVER_SCKEY: ${{ secrets.SERVER_SCKEY }}
-          SERVER_CHAN_SWITCH: ${{ github.event.inputs.push_switch || secrets.PUSH_SWITCH || 'ON' }}
           FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
           FEISHU_SWITCH: ${{ github.event.inputs.push_switch || secrets.PUSH_SWITCH || 'ON' }}
+          DISCARD_WEBHOOK: ${{ secrets.DISCARD_WEBHOOK }}
+          DISCARD_SWITCH: ${{ github.event.inputs.push_switch || secrets.PUSH_SWITCH || 'ON' }}
+          DISCARD_SEND_DAILY_REPORT: ${{ secrets.DISCARD_SEND_DAILY_REPORT || 'OFF' }}
+          DISCARD_SEND_NORMAL_MSG: ${{ secrets.DISCARD_SEND_NORMAL_MSG || 'ON' }}
           NIGHT_SLEEP_SWITCH: ${{ github.event.inputs.night_sleep_switch || secrets.NIGHT_SLEEP_SWITCH || 'ON' }}
           DAILY_REPORT_SWITCH: ${{ github.event.inputs.daily_report_switch || secrets.DAILY_REPORT_SWITCH || 'ON' }}
         run: python ./Rss_monitor.py  # 不使用--once参数，默认进入循环模式

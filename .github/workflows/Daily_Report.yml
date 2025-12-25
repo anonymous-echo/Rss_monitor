@@ -30,9 +30,8 @@ jobs:
           # 日报模式下不进行推送，设置所有推送开关为OFF
           DINGDING_SWITCH: "OFF"
           TELEGRAM_SWITCH: "OFF"
-          PUSHPLUS_SWITCH: "OFF"
-          SERVER_CHAN_SWITCH: "OFF"
           FEISHU_SWITCH: "OFF"
+          DISCARD_SWITCH: "OFF"
         run: python ./Rss_monitor.py --daily-report
 
       - name: Commit changes

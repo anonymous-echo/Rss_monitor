@@ -1,0 +1,12 @@
+# 配置Issue模板
+blank_issues_enabled: false  # 禁用空白Issue
+contact_links:
+  - name: 项目讨论
+    url: https://github.com/adminlove520/Rss_monitor/discussions
+    about: 请在这里进行项目相关讨论
+  - name: 问题反馈
+    url: https://github.com/adminlove520/Rss_monitor/issues/new?template=bug-report.yml
+    about: 请使用bug-report.yml模板报告问题
+  - name: 添加RSS源
+    url: https://github.com/adminlove520/Rss_monitor/issues/new?template=add-rss-source.yml
+    about: 请使用add-rss-source.yml模板添加RSS源
