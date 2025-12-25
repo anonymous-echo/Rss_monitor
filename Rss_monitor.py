@@ -257,7 +257,7 @@ def send_discard_msg(webhook, title, content, is_daily_report=False, html_file=N
             # 标题已经包含"RSS日报"，所以这里不再重复添加
             # 使用time.strftime获取当前日期
             current_date = time.strftime('%Y-%m-%d', time.localtime())
-            push_content = f"**{title}**\n共收集到 {content.split()[1]} 篇文章\n欢迎提交RSS源：[GitHub Issue](https://github.com/adminlove520/Rss_monitor/issues/new/choose)\n{current_date}:{github_pages_url}\n\n"
+            push_content = f"**{title}**\n共收集到 {content.split()[1]} 篇文章\n欢迎提交RSS源：[GitHub Issue](https://github.com/adminlove520/Rss_monitor/issues/new/choose)\nDaily_{current_date}:{github_pages_url}\n\n"
             
             # 添加markdown内容（预览格式）
             if markdown_content:
@@ -275,11 +275,12 @@ def send_discard_msg(webhook, title, content, is_daily_report=False, html_file=N
                     if include_lines:
                         preview_content.append(line)
                 
-                # 拼接预览内容
-                push_content += "日报内容预览：\n"
-                push_content += '\n'.join(preview_content)
-                push_content += "\n\n"
-            
+                # 拼接预览内容，移除多余空行
+            push_content += "日报内容预览：\n"
+            filtered_preview = [line for line in preview_content if line.strip()]
+            push_content += '\n'.join(filtered_preview)
+            push_content += "\n"
+        
             # 添加Power By信息（正确格式，避免多余的分隔线和空格）
             push_content += f"Power By 东方隐侠安全团队·Anonymous@ [隐侠安全客栈](https://www.dfyxsec.com/)\n"
             
@@ -370,7 +371,7 @@ def generate_daily_report(cursor):
         })
     
     # 添加Power By信息（纯markdown格式，避免HTML标签在Discord中显示为文本）
-    markdown_content += f"\n---\n"
+    markdown_content += f"---\n"
     markdown_content += f"Power By 东方隐侠安全团队·Anonymous@ [隐侠安全客栈](https://www.dfyxsec.com/)\n"
     markdown_content += f"---\n"
     
@@ -436,8 +437,7 @@ def update_index_html(current_date, article_list, count):
     print("更新index.html...")
     
     # 创建index.html模板
-    index_template = """
-<!DOCTYPE html>
+    index_template = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
