@@ -1,6 +1,6 @@
 # 配置Issue模板
 blank_issues_enabled: false  # 禁用空白Issue，只允许使用模板
-templates:
+templates:  # GitHub Issue模板配置的正确字段名是templates
   - bug-report.yml
   - add-rss-source.yml
   - discussion.yml

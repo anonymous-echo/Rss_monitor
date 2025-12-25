@@ -1,7 +1,7 @@
 name: 添加RSS源
 about: 提交新的RSS源，自动添加到监控列表
 title: "添加RSS源："
-labels: "add-rss"
+labels: ["add-rss"]  # 修复：labels应该是数组，而不是字符串
 assignees: ""
 
 body:
