@@ -268,8 +268,8 @@ def send_discard_msg(webhook, title, content, is_daily_report=False, html_file=N
                     if line.startswith('## '):
                         include_lines = True
                     # 跳过Power By信息
-                    if line.strip().startswith('---'):
-                        break
+                    if line.strip().startswith('Power By') or line.strip().startswith('---'):
+                        continue
                     if include_lines:
                         preview_content.append(line)
                 
@@ -278,10 +278,8 @@ def send_discard_msg(webhook, title, content, is_daily_report=False, html_file=N
                 push_content += '\n'.join(preview_content)
                 push_content += "\n\n"
             
-            # 添加Power By信息（正确格式）
-            push_content += "---\n"
+            # 添加Power By信息（正确格式，避免多余的分隔线和空格）
             push_content += f"Power By 东方隐侠安全团队·Anonymous@ [隐侠安全客栈](https://www.dfyxsec.com/)\n"
-            push_content += "---"
             
             data = {
                 "content": push_content
