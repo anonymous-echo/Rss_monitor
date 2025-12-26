@@ -72,7 +72,8 @@ jobs:
           DISCARD_SEND_NORMAL_MSG: ${{ secrets.DISCARD_SEND_NORMAL_MSG || 'ON' }}
           NIGHT_SLEEP_SWITCH: ${{ github.event.inputs.night_sleep_switch || secrets.NIGHT_SLEEP_SWITCH || 'ON' }}
           DAILY_REPORT_SWITCH: ${{ github.event.inputs.daily_report_switch || secrets.DAILY_REPORT_SWITCH || 'ON' }}
-        run: python ./Rss_monitor.py  # 不使用--once参数，默认进入循环模式
+        # run: python ./Rss_monitor.py  # 不使用--once参数，默认进入循环模式
+        run: python ./Rss_monitor.py --once # 循环模式已经没意义了 改成单次执行 
 
       - name: Commit changes
         run: |
