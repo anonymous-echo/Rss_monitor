@@ -1,0 +1,66 @@
+name: Version Bump
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - '.github/workflows/**'
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current version
+        id: get_version
+        run: |
+          # 从 Rss_monitor.py 提取版本号
+          current_version=$(grep -oP '__version__ = "\K[^"]+' Rss_monitor.py)
+          echo "Current version: $current_version"
+          echo "current_version=$current_version" >> $GITHUB_OUTPUT
+
+      - name: Calculate new version
+        id: calc_version
+        run: |
+          current_version="${{ steps.get_version.outputs.current_version }}"
+          IFS='.' read -r -a parts <<< "$current_version"
+          major="${parts[0]}"
+          minor="${parts[1]}"
+          patch="${parts[2]}"
+          new_patch=$((patch + 1))
+          new_version="$major.$minor.$new_patch"
+          echo "New version: $new_version"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+
+      - name: Update version in files
+        run: |
+          new_version="${{ steps.calc_version.outputs.new_version }}"
+          old_version="${{ steps.get_version.outputs.current_version }}"
+          
+          # 更新 Rss_monitor.py
+          sed -i "s/__version__ = \"$old_version\"/__version__ = \"$new_version\"/" Rss_monitor.py
+          
+          # 更新 README.md 中的 Version badge
+          sed -i "s/Version-$old_version/Version-$new_version/" README.md
+          
+          # 更新 README.md 中的 Changelog 链接描述 (可选，如果有的话)
+          
+          echo "Updated files to version $new_version"
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: bump version to ${{ steps.calc_version.outputs.new_version }}"
+          branch: main
+          file_pattern: 'Rss_monitor.py README.md'
+          tagging_message: "v${{ steps.calc_version.outputs.new_version }}"

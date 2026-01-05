@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+.git
+.github
+.gitignore
+.dockerignore
+Dockerfile
+README.md
+deploy.sh
+*.pid
+log/
+cache/
+tmp/

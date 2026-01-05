@@ -9,6 +9,13 @@ from datetime import datetime
 import dingtalkchatbot.chatbot as cb
 from jinja2 import Template
 
+
+
+__version__ = "1.1.1"
+
+
+
+
 # 加载配置文件
 def load_config():
     # 从文件加载配置
@@ -595,7 +602,7 @@ def tgbot(text, msg, token, group_id):
 # 主函数
 
 def main():
-    banner = '''
+    banner = f'''
     +-------------------------------------------+
                    安全社区推送监控
     使用说明：
@@ -604,6 +611,7 @@ def main():
     3. 可自行去除或增加新的推送渠道代码到本脚本中
                       2023.10.10
                    Powered By：Pings
+                   Version：{__version__}
     +-------------------------------------------+
                      开始监控...
     '''
@@ -614,6 +622,7 @@ def main():
     parser = argparse.ArgumentParser(description='安全社区文章监控脚本')
     parser.add_argument('--once', action='store_true', help='只执行一次，适合GitHub Action运行')
     parser.add_argument('--daily-report', action='store_true', help='生成日报模式，只生成日报不推送')
+    parser.add_argument('--version', action='version', version=f'Rss_monitor {__version__}', help='显示版本号')
     args = parser.parse_args()
     
     conn = init_database()
