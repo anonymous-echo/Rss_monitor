@@ -20,6 +20,19 @@
 
 [![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/XXXXXX)
 
+### 镜像部署 (推荐)
+
+本项目支持通过 GitHub Container Registry (GHCR) 进行镜像部署。
+
+1. **部署地址**: 使用镜像 `ghcr.io/adminlove520/rss_monitor:latest`。
+2. **环境变量**:
+   - `DISCARD_WEBHOOK`: Discord Webhook 地址。
+   - `DISCARD_SWITCH`: `ON`。
+   - `TZ`: `Asia/Shanghai` (默认)。
+3. **数据持久化**:
+   - 挂载 `/app/articles.db` 文件或目录以保存已读记录。
+   - 在 Zeabur 中，可以添加 Volume 并设置 Mount Path 为 `/app/articles.db`。
+
 ### Docker 部署
 
 ```bash

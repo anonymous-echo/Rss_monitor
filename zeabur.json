@@ -1,0 +1,21 @@
+{
+    "source": {
+        "docker": {
+            "image": "ghcr.io/adminlove520/rss_monitor:latest"
+        }
+    },
+    "env": {
+        "DISCARD_SWITCH": "ON",
+        "TZ": "Asia/Shanghai"
+    },
+    "volumes": [
+        {
+            "dir": "/app/archive",
+            "path": "/app/archive"
+        },
+        {
+            "dir": "/app/articles.db",
+            "path": "/app/articles.db"
+        }
+    ]
+}
