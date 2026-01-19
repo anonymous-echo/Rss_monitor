@@ -1,6 +1,6 @@
 # RSS Monitor
 
-![Version](https://img.shields.io/badge/Version-1.1.5-blue)
+![Version](https://img.shields.io/badge/Version-1.1.6-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 
