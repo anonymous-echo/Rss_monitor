@@ -12,7 +12,7 @@ from jinja2 import Template
 
 
 
-__version__ = "1.1.6"
+__version__ = "1.1.7"
 
 
 
