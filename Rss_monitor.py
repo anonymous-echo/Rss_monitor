@@ -2,6 +2,8 @@ import sqlite3
 import feedparser
 import yaml
 import requests
+import time
+import os
 import argparse
 import random
 from datetime import datetime
@@ -605,7 +607,7 @@ def main():
     1. 修改config.yaml中的推送配置以及开关
     2. 修改rss.yaml中需要增加删除的社区
     3. 可自行去除或增加新的推送渠道代码到本脚本中
-                      2023.10.10
+                      {time.strftime('%Y.%m.%d', time.localtime())}
                    Powered By：Pings
                    Version：{__version__}
     +-------------------------------------------+
