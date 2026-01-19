@@ -2,9 +2,8 @@ import sqlite3
 import feedparser
 import yaml
 import requests
-import time
-import os
 import argparse
+import random
 from datetime import datetime
 import dingtalkchatbot.chatbot as cb
 from jinja2 import Template
@@ -139,7 +138,12 @@ def check_for_updates(feed_url, site_name, cursor, conn, send_push=True):
             
             # 只有在send_push为True时才发送推送
             if send_push:
-                push_message(f"{site_name}今日更新", f"标题: {data_title}\n链接: {data_link}\n推送时间：{push_time}")
+                extra_data = {
+                    'link': data_link,
+                    'timestamp': push_time,
+                    'is_article': True
+                }
+                push_message(f"{site_name}今日更新", f"标题: {data_title}\n链接: {data_link}\n推送时间：{push_time}", extra_data=extra_data)
 
             # 存储到数据库 with a timestamp
             cursor.execute("INSERT INTO items (title, link, timestamp) VALUES (?, ?, CURRENT_TIMESTAMP)", (data_title, data_link))
@@ -164,7 +168,7 @@ def get_proxies():
     return proxies if proxies else None
 
 # 推送函数
-def push_message(title, content):
+def push_message(title, content, extra_data=None):
     config = load_config()
     push_config = config.get('push', {})
     
@@ -183,7 +187,7 @@ def push_message(title, content):
     
     # Discard推送
     if 'discard' in push_config and push_config['discard'].get('switch', '') == "ON" and push_config['discard'].get('send_normal_msg', '') == "ON":
-        send_discard_msg(push_config['discard'].get('webhook'), title, content)
+        send_discard_msg(push_config['discard'].get('webhook'), title, content, extra_data=extra_data)
 
 # 飞书推送
 def send_feishu_msg(webhook, title, content):
@@ -239,7 +243,7 @@ def send_dingding_msg(webhook, secret_key, title, content):
     dingding(title, content, webhook, secret_key)
 
 # Discard推送
-def send_discard_msg(webhook, title, content, is_daily_report=False, html_file=None, markdown_content=None):
+def send_discard_msg(webhook, title, content, is_daily_report=False, html_file=None, markdown_content=None, extra_data=None):
     # 检查是否是占位符
     if not webhook or webhook == "discard的webhook地址":
         print(f"Discard推送跳过：webhook地址未配置")
@@ -255,89 +259,81 @@ def send_discard_msg(webhook, title, content, is_daily_report=False, html_file=N
             "Content-Type": "application/json;charset=utf-8"
         }
         
+        # 统一随机颜色
+        random_color = random.randint(0, 0xFFFFFF)
+        footer_text = "Power By 东方隐侠安全团队·Anonymous@ 隐侠安全客栈"
+        
         if is_daily_report and html_file:
             # 推送日报，Discord Webhook不支持直接发送HTML格式，使用文本格式发送链接
-            # 生成GitHub Pages URL
             github_pages_url = f"https://adminlove520.github.io/Rss_monitor/{html_file}"
-            
-            # 构建推送内容
-            # 标题已经包含"RSS日报"，所以这里不再重复添加
-            # 使用time.strftime获取当前日期
             current_date = time.strftime('%Y-%m-%d', time.localtime())
-            push_content = f"**{title}**\n共收集到 {content.split()[1]} 篇文章\n欢迎提交RSS源：[GitHub Issue](https://github.com/adminlove520/Rss_monitor/issues/new/choose)\nDaily_{current_date}:{github_pages_url}\n\n"
             
-            # 添加markdown内容（预览格式）
-            if markdown_content:
-                # 移除markdown标题和最后更新时间，只保留文章列表
-                lines = markdown_content.split('\n')
-                preview_content = []
-                include_lines = False
-                for line in lines:
-                    # 从第一个## 开始记录文章列表
-                    if line.startswith('## '):
-                        include_lines = True
-                    # 跳过Power By信息
-                    if line.strip().startswith('Power By') or line.strip().startswith('---'):
-                        continue
-                    if include_lines:
-                        preview_content.append(line)
-                
-                # 拼接预览内容，移除多余空行
-            push_content += "日报内容预览：\n"
-            filtered_preview = [line for line in preview_content if line.strip()]
-            push_content += '\n'.join(filtered_preview)
-            push_content += "\n"
-        
-            # 添加Power By信息（正确格式，避免多余的分隔线和空格）
-            push_content += f"Power By 东方隐侠安全团队·Anonymous@ [隐侠安全客栈](https://www.dfyxsec.com/)\n"
-            
+            # 使用 Embed 形式推送日报
             data = {
-                "content": push_content
+                "embeds": [{
+                    "title": title,
+                    "color": random_color,
+                    "description": f"共收集到 {content.split()[1]} 篇文章\n欢迎提交RSS源：[GitHub Issue](https://github.com/adminlove520/Rss_monitor/issues/new/choose)",
+                    "fields": [
+                        {"name": "查看全文", "value": f"[点击访问 GitHub Pages]({github_pages_url})", "inline": False}
+                    ],
+                    "footer": {"text": footer_text},
+                    "timestamp": datetime.utcnow().isoformat()
+                }]
+            }
+        elif extra_data and extra_data.get('is_start'):
+            # 启动卡片推送
+            data = {
+                "embeds": [{
+                    "title": f"🚀 {title}",
+                    "color": 0x34A853, # 启动卡片默认使用绿色，或随机
+                    "fields": [
+                        {"name": "启动时间", "value": extra_data.get('start_time', '未知'), "inline": True},
+                        {"name": "服务状态", "value": "✅ 已启动", "inline": True},
+                        {"name": "版本信息", "value": extra_data.get('version', '未知'), "inline": True},
+                        {"name": "监控类型", "value": "RSS 社区文章监控", "inline": True},
+                        {"name": "推送渠道", "value": extra_data.get('channels', '未知'), "inline": True},
+                        {"name": "运行模式", "value": extra_data.get('mode', '未知'), "inline": True}
+                    ],
+                    "footer": {"text": footer_text},
+                    "timestamp": datetime.utcnow().isoformat()
+                }]
+            }
+        elif extra_data and extra_data.get('is_article'):
+            # 文章更新卡片
+            data = {
+                "embeds": [{
+                    "title": title,
+                    "color": random_color,
+                    "fields": [
+                        {"name": "标题", "value": content.split('\n')[0].replace('标题: ', ''), "inline": False},
+                        {"name": "链接", "value": f"[访问链接]({extra_data.get('link')})", "inline": False},
+                        {"name": "推送时间", "value": extra_data.get('timestamp'), "inline": True},
+                        {"name": "分类", "value": "安全资讯", "inline": True}
+                    ],
+                    "footer": {"text": footer_text},
+                    "timestamp": datetime.utcnow().isoformat()
+                }]
             }
         else:
-            # 推送普通消息，使用Discord Webhook支持的格式
+            # 兼容旧格式推送文本
             data = {
                 "content": f"**{title}**\n{content}"
             }
         
         print(f"正在发送Discard推送：{title}")
-        print(f"目标地址：{webhook}")
         
         # 获取代理配置
         proxies = get_proxies()
-        if proxies:
-            print(f"使用代理：{proxies}")
         
         # 使用较短的超时时间，避免长时间阻塞
         response = requests.post(webhook, json=data, headers=headers, timeout=5, proxies=proxies)
-        
-        print(f"Discard推送响应状态码：{response.status_code}")
         
         # 检查响应状态
         if response.status_code in [200, 204]:
             print(f"Discard推送成功: {title}")
         else:
             print(f"Discard推送失败: HTTP状态码 - {response.status_code}")
-            print(f"响应内容: {response.text}")
-            
-            # 提供解决方案建议
-            if response.status_code == 401:
-                print("建议：请检查webhook地址是否正确，可能包含无效的token")
-            elif response.status_code == 404:
-                print("建议：webhook地址不存在，请检查webhook地址是否正确")
-            elif response.status_code == 429:
-                print("建议：超出Discord API速率限制，请稍后再试")
-            elif response.status_code >= 500:
-                print("建议：Discord服务器错误，请稍后再试")
-    except requests.exceptions.Timeout:
-        print(f"Discard推送失败: 连接超时")
-        print("建议：检查网络连接，或尝试使用更快的网络环境")
-    except requests.exceptions.ConnectionError:
-        print(f"Discard推送失败: 网络连接错误")
-        print("建议：检查网络连接，确保可以访问discord.com")
-        print("可以尝试使用ping命令测试：ping discord.com")
-    except requests.exceptions.RequestException as e:
-        print(f"Discard推送失败: 请求异常 - {str(e)}")
     except Exception as e:
         print(f"Discard推送失败: 未知错误 - {str(e)}")
 
@@ -650,7 +646,31 @@ def main():
                 break
         
         if any_push_enabled:
-            push_message("安全社区文章监控已启动!", f"启动时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
+            # 准备启动消息元数据
+            enabled_channels = []
+            for name, svc in push_config.items():
+                if svc.get('switch', 'OFF') == 'ON':
+                    # 映射渠道名称
+                    channel_map = {
+                        'dingding': '钉钉',
+                        'feishu': '飞书',
+                        'tg_bot': 'Telegram Bot',
+                        'discard': 'Discard'
+                    }
+                    enabled_channels.append(channel_map.get(name, name))
+            
+            run_mode = "单次执行" if args.once else "循环监控"
+            if args.daily_report:
+                run_mode = "生成日报"
+            
+            extra_data = {
+                'is_start': True,
+                'start_time': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
+                'version': __version__,
+                'channels': ', '.join(enabled_channels),
+                'mode': run_mode
+            }
+            push_message("安全社区文章监控已启动!", f"服务已准备就绪。", extra_data=extra_data)
 
     try:
         if args.daily_report:
