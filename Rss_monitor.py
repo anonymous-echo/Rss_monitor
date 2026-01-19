@@ -11,7 +11,7 @@ from jinja2 import Template
 
 
 
-__version__ = "1.1.3"
+__version__ = "1.1.4"
 
 
 
