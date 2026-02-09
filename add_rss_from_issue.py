@@ -31,8 +31,8 @@ issue_body = issue_data['issue']['body']
 issue_state = issue_data['issue']['state']
 
 # 只有当Issue是打开状态且标题包含"添加RSS源"时才处理
-if issue_state != 'open' or '添加RSS源' not in issue_title:
-    print(f"Issue #{issue_number} 不是打开状态或标题不包含'添加RSS源'，跳过处理")
+if issue_state != 'open' or 'Add RSS Source' not in issue_title:
+    print(f"Issue #{issue_number} 不是打开状态或标题不包含'Add RSS Source'，跳过处理")
     sys.exit(0)
 
 # 解析Issue内容
