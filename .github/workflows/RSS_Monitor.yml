@@ -80,8 +80,14 @@ jobs:
           git diff
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
-          git add articles.db archive/ index.html
+          # 暂存本地更改
+          git stash
+          # 拉取远程更改
           git pull --rebase origin main
+          # 恢复本地更改
+          git stash pop || echo "恢复更改时可能存在冲突，将继续执行"
+          # 添加并提交更改
+          git add articles.db archive/ index.html
           git commit -m "每日安全社区文章更新（`date +'%Y-%m-%d'`）" || echo "没有新文章需要提交"
 
       - name: Push changes
